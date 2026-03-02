@@ -1,7 +1,7 @@
 'use strict';
 const readline = require('readline');
 const chalk = require('chalk');
-const config = require('./config');
+const config = require('../config');
 
 const SETUP_ART = `
 ${chalk.cyan('  ██████╗ ██████╗  ██████╗ ██╗██████╗  ██████╗██╗      █████╗ ██╗    ██╗')}
@@ -23,7 +23,7 @@ async function run() {
   console.clear();
   console.log(SETUP_ART);
   console.log(chalk.cyan('  Welcome to DroidClaw Setup\n'));
-  console.log(chalk.gray('  AGI-level AI agent for Android\n'));
+  console.log(chalk.gray('  AI agent for Android\n'));
   console.log(chalk.gray('  ─────────────────────────────────────────────────────────────\n'));
 
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -81,10 +81,10 @@ async function run() {
   config.save({ name, apiKey, baseUrl, model, setupDone: true, device, hasTermuxApi });
 
   // Init workspace
-  require('./workspace').init();
+  require('../workspace').init();
 
   // Update USER.md with name and device
-  const workspace = require('./workspace');
+  const workspace = require('../workspace');
   const userDoc = workspace.read('USER').replace('Unknown', name).replace('Android / Termux', `${device} / Termux`);
   workspace.write('USER', userDoc);
 
