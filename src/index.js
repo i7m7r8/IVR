@@ -10,7 +10,7 @@ const tui       = require('./tui');
 const telegram  = require('./integrations/telegram');
 const { showHelp } = require('./tui/menu');
 
-// Load tools
+// Load core tools
 require('./tools/exec');
 require('./tools/memory');
 require('./tools/realworld');
@@ -19,6 +19,16 @@ require('./tools/semantic_memory');
 require('./tools/social');
 require('./tools/self_modify');
 require('./tools/google');
+require('./tools/search');
+
+// Load skills system (builtin + user installed)
+try {
+  const skillLoader = require('./tools/skills/loader');
+  const count = skillLoader.loadAll();
+  if (count > 0) console.log(`[kira] ${count} skills loaded`);
+} catch (e) {
+  console.error('[kira] skills failed to load:', e.message);
+}
 
 async function cmd(input, parts) {
   const sub = parts[1];
@@ -28,6 +38,21 @@ async function cmd(input, parts) {
     case '/config':
       await showHelp(tui);
       break;
+
+    case '/skills': {
+      try {
+        const skillLoader = require('./tools/skills/loader');
+        const { builtin, user } = skillLoader.listSkills();
+        const lines = [];
+        if (builtin.length) lines.push(`builtin: ${builtin.join(', ')}`);
+        if (user.length)    lines.push(`yours:   ${user.map(s => s.name).join(', ')}`);
+        if (!lines.length)  lines.push('no skills loaded.');
+        tui.addMessage('system', lines.join('\n'));
+      } catch (e) {
+        tui.addMessage('error', e.message);
+      }
+      break;
+    }
 
     case '/status': {
       const hb    = heartbeat.info();
@@ -107,10 +132,6 @@ async function main() {
   engine.init(soul);
   heartbeat.start();
 
-  // Load custom tools from previous sessions
-  try {
-  } catch {}
-
   await tui.init(async (input) => {
     if (input.startsWith('/')) {
       await cmd(input, input.trim().split(/\s+/));
@@ -138,7 +159,7 @@ async function main() {
     }
   });
 
-  // Start scheduler AFTER TUI is ready
+  // Start scheduler after TUI is ready
   try {
     const scheduler = require('./core/scheduler');
     scheduler.start({ telegram, loop, tui });
@@ -150,7 +171,7 @@ async function main() {
     proactive.start();
   } catch {}
 
-  // Start telegram AFTER TUI is ready
+  // Start telegram after TUI is ready
   const cfg = config.load();
   if (cfg.telegramToken) {
     telegram.start(msg => tui.addMessage('system', `tg: ${msg}`));
@@ -158,4 +179,3 @@ async function main() {
 }
 
 main();
-require('./tools/search');
