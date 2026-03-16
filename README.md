@@ -1,4 +1,4 @@
-# 🦞 Kira — The First AI That Knows You Longer Than You've Known Yourself
+# 🦞 IVR — The First AI That Knows You Longer Than You've Known Yourself
 
 <div align="center">
 
