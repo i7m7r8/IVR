@@ -66,8 +66,10 @@ registry.register('notifications_watch', async ({ app }) => {
 
 registry.register('sms_list', async ({ limit, number }) => {
   const limitN = limit ? parseInt(limit) : 10;
+  if (isNaN(limitN) || limitN < 1 || limitN > 100) return 'error: limit must be 1-100';
+  const safeNumber = number ? number.replace(/[^0-9+\-() ]/g, '').trim() : null;
   let cmd = `termux-sms-list -l ${limitN}`;
-  if (number) cmd += ` -n "${number}"`;
+  if (safeNumber) cmd += ` -n "${safeNumber}"`;
   const raw  = run(cmd, 10000);
   const msgs = JSON.parse(raw);
   if (!msgs.length) return 'no messages.';
@@ -78,9 +80,18 @@ registry.register('sms_list', async ({ limit, number }) => {
 
 registry.register('sms_send', async ({ number, message }) => {
   if (!number || !message) return 'error: number and message required';
-  // Safety — ask before sending
-  run(`termux-sms-send -n "${number}" "${message.replace(/"/g, '\\"')}"`);
-  return `sms sent to ${number}: "${message}"`;
+  // Sanitize: strip all shell-special chars from number, escape message via temp file
+  const safeNumber = number.replace(/[^0-9+\-() ]/g, '').trim();
+  if (!safeNumber) return 'error: invalid phone number';
+  const { writeFileSync, unlinkSync } = require('fs');
+  const tmpFile = `/data/data/com.termux/files/home/.droidclaw/sms_tmp_${Date.now()}.txt`;
+  try {
+    writeFileSync(tmpFile, message, 'utf8');
+    run(`termux-sms-send -n "${safeNumber}" "$(cat '${tmpFile}')"`);
+  } finally {
+    try { unlinkSync(tmpFile); } catch {}
+  }
+  return `sms sent to ${safeNumber}: "${message}"`;
 }, 'send an SMS message');
 
 registry.register('sms_read_from', async ({ name }) => {
@@ -90,7 +101,9 @@ registry.register('sms_read_from', async ({ name }) => {
   const contacts = JSON.parse(raw);
   const contact  = contacts.find(c => c.name?.toLowerCase().includes(name.toLowerCase()));
   if (!contact) return `contact "${name}" not found`;
-  const msgs = JSON.parse(run(`termux-sms-list -l 10 -n "${contact.number}"`, 10000));
+  const safeNumber = (contact.number || '').replace(/[^0-9+\-() ]/g, '').trim();
+  if (!safeNumber) return `contact "${contact.name}" has no valid number`;
+  const msgs = JSON.parse(run(`termux-sms-list -l 10 -n "${safeNumber}"`, 10000));
   if (!msgs.length) return `no messages with ${contact.name}`;
   return msgs.map(m =>
     `${m.type === 'incoming' ? contact.name : 'you'}: ${m.body?.slice(0, 150) || ''}`

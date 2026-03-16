@@ -11,7 +11,7 @@ const BASE = 'http://localhost:7070';
 function call(method, endpoint, body = null) {
   try {
     const args = body
-      ? `-s -X ${method} ${BASE}${endpoint} -H "Content-Type: application/json" -d '${JSON.stringify(body)}'`
+      ? `-s -m 8 -X ${method} ${BASE}${endpoint} -H "Content-Type: application/json" -d '${JSON.stringify(body)}'`
       : `-s -m 8 ${BASE}${endpoint}`;
     const result = execSync(`curl ${args}`, { encoding: 'utf8', timeout: 9000 });
     return JSON.parse(result);
@@ -169,17 +169,18 @@ registry.register('battery_info', () => {
 // smart tap — reads screen, finds text, taps its center coordinates
 registry.register('tap_text', async ({ text }) => {
   try {
-    const { execSync } = require('child_process');
-     const raw = execSync('curl -s http://localhost:7070/screenshot', { encoding: 'utf8', timeout: 9000 });
-    const data = JSON.parse(raw);
-    const nodes = data.nodes || data;
+    const data = call('GET', '/screenshot');
+    if (!data) return 'tap_text failed: KiraService not reachable';
+    const nodes = Array.isArray(data) ? data : (data.nodes || []);
     const target = nodes.find(n => n.text && n.text.toLowerCase().includes(text.toLowerCase()));
     if (!target) return `"${text}" not found on screen`;
-    // parse bounds "x1,y1,x2,y2"
-    const parts = target.bounds.split(',').map(Number);
-    const x = Math.round((parts[0] + parts[2]) / 2);
-    const y = Math.round((parts[1] + parts[3]) / 2);
-    const tap = execSync(`curl -s -X POST http://localhost:7070/tap -H "Content-Type: application/json" -d '{"x":${x},"y":${y}}'`, { encoding: 'utf8' });
+    // parse bounds — supports "x1,y1,x2,y2" and "[x1,y1][x2,y2]" formats
+    const digits = (target.bounds || '').replace(/[\[\]]/g, ',').split(',').map(Number).filter(n => !isNaN(n));
+    if (digits.length < 4) return `"${text}" found but bounds unparseable: ${target.bounds}`;
+    const x = Math.round((digits[0] + digits[2]) / 2);
+    const y = Math.round((digits[1] + digits[3]) / 2);
+    const tap = call('POST', '/tap', { x, y });
+    if (!tap) return `found "${text}" at (${x},${y}) but tap failed`;
     return `tapped "${text}" at (${x},${y})`;
   } catch(e) { return 'tap_text failed: ' + e.message; }
 }, 'find text on screen and tap it — smarter than find_and_tap');
