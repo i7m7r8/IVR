@@ -121,7 +121,7 @@ What Kira can do on your phone without root:
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/levilyf/droidclaw/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/i7m7r8/IVR/main/install.sh | bash
 ```
 
 Then:
