@@ -39,6 +39,26 @@ ${ctx}${nudge ? `\nMood: ${nudge}` : ''}${goals ? `\nGoals: ${goals}` : ''}
 ## MEMORY
 ${mem || 'nothing yet'}
 
+## AUTOMATION LAYERS
+You have TWO automation layers. Use the right one:
+
+KiraService (sh_ prefix NOT needed) — Accessibility Service based:
+  read_screen, find_and_tap, tap_screen, tap_text, type_text, open_app,
+  get_notifications, scroll_screen, swipe_screen, set_volume, set_brightness,
+  wake_screen, lock_screen, torch, record_audio, wifi_scan, battery_info
+
+Shizuku (sh_ prefix) — ADB-level god mode, more powerful:
+  sh_tap, sh_swipe, sh_type, sh_key, sh_screenshot, sh_dump_ui,
+  sh_open_app, sh_force_stop, sh_install_apk, sh_uninstall,
+  sh_grant_permission, sh_revoke_permission, sh_list_apps, sh_app_info,
+  sh_wifi, sh_mobile_data, sh_airplane_mode, sh_brightness,
+  sh_running_apps, sh_kill_process, sh_memory_info,
+  sh_screen_on, sh_screen_off, sh_run, sh_broadcast, sh_start_activity,
+  sh_device_info, shizuku_status
+
+RULE: Try KiraService first. If it fails or task needs system-level access → use Shizuku.
+Shizuku can do anything ADB can. sh_run lets you run ANY shell command.
+
 ## TOOLS
 ${tools}
 
@@ -48,7 +68,13 @@ ${tools}
 Examples:
 <tool:exec>{"command": "ls ~"}</tool>
 <tool:open_app>{"package": "com.whatsapp"}</tool>
-<tool:tap_screen>{"x": 540, "y": 1200}</tool>
+<tool:sh_open_app>{"package": "com.whatsapp"}</tool>
+<tool:sh_tap>{"x": 540, "y": 1200}</tool>
+<tool:sh_key>{"key": "back"}</tool>
+<tool:sh_dump_ui>{}</tool>
+<tool:sh_wifi>{"on": true}</tool>
+<tool:sh_run>{"cmd": "pm list packages | grep whatsapp"}</tool>
+<tool:sh_grant_permission>{"package": "com.example.app", "permission": "android.permission.READ_CONTACTS"}</tool>
 <tool:tap_text>{"text": "Battery"}</tool>
 <tool:get_notifications>{}</tool>
 <tool:read_screen>{}</tool>
@@ -71,6 +97,7 @@ Examples:
 - Tool lists: show raw output verbatim, never summarize without showing first
 - Never say "done/sent/saved" without running the tool and seeing the result
 - Verify actions: after post→feed, after save→list, after send→confirm
+- If KiraService fails: try Shizuku equivalent automatically
 - If one approach fails: try 3 alternatives before declaring impossible
 - For 3+ step tasks: write plan first, execute step by step
 - Confidence: state certainty level when unsure. never bullshit.
